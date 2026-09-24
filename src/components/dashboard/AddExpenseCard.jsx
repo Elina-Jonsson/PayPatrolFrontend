@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Card,
     Typography,
@@ -11,26 +11,84 @@ import {
     InputAdornment,
     Button
 } from '@mui/material';
+import { categoryService } from "../../services/CategoryService"
+import { subscriptionService } from "../../services/SubscriptionService"
 
 export default function AddExpenseCard({ onExpenseAdded }) {
-    const [category, setCategory] = useState('');
-    const [title, setTitle] = useState('');
+    const [categories, setCategories] = useState([]);
+    const [selectedCategory, setSelectedCategory] = useState('');
+    const [title, setTitle] = useState("");
+    const [error, setError] = useState({});
+
     const [amount, setAmount] = useState('');
+    const [nextPaymentDate, setNextPaymentDate] = useState('');
+    const [interval, setInterval] = useState(1);
 
-    const handleAddExpense = (e) => {
+    // Get all categories
+    useEffect(() => {
+        const loadCategories = async () => {
+            try {
+                const data = await categoryService.getAll();
+                setCategories(data);
+            } catch (err) {
+                console.error("Kunde inte hämta kategorier:", err);
+            }
+        };
+        loadCategories();
+    }, []);
+
+    // Create new expense
+    const handleAddExpense = async (e) => {
         e.preventDefault();
-        console.log({ category, title, amount });
 
-        // Reset form fields after submit
-        setCategory('');
-        setTitle('');
-        setAmount('');
+        const newErrors = {};
 
-        // Notify parent component to refresh data
-        if (onExpenseAdded) {
-            onExpenseAdded();
+        if (!selectedCategory) {
+            newErrors.category = 'Välj en kategori';
+        }
+        if (!title.trim()) {
+            newErrors.title = 'Ange ett namn på utgiften';
+        }
+        if (!amount || parseFloat(amount) <= 0) {
+            newErrors.amount = 'Ange ett giltigt belopp över 0 kr';
+        }
+        if (!nextPaymentDate) {
+            newErrors.nextPaymentDate = 'Välj nästa betalningsdatum';
+        }
+
+        if (Object.keys(newErrors).length > 0) {
+            newErrors.general = 'Alla obligatoriska fält måste fyllas i.';
+            setError(newErrors);
+            return;
+        }
+
+        setError({});
+
+        const payload = {
+            amount: parseFloat(amount),
+            nextPaymentDate: new Date(nextPaymentDate).toISOString(),
+            interval: parseInt(interval, 10),
+            categoryId: parseInt(selectedCategory, 10),
+            title: title
+        };
+
+        try {
+            await subscriptionService.create(payload);
+
+            setSelectedCategory('');
+            setAmount('');
+            setNextPaymentDate('');
+            setInterval(1);
+
+            if (onExpenseAdded) {
+                onExpenseAdded();
+            }
+        } catch (err) {
+            console.error("Fel vid skapande av utgift:", err);
+            setError({ general: "Kunde inte spara utgiften, försök igen senare." });
         }
     };
+
 
     return (
         <Card
@@ -39,10 +97,10 @@ export default function AddExpenseCard({ onExpenseAdded }) {
                 p: 4,
                 width: '500px',
                 borderRadius: 3,
-                background: 'transparent',
-                backgroundImage: 'none',
                 boxShadow: '0px 10px 35px rgba(0, 0, 0, 0.08)',
                 border: '1px solid rgba(220, 220, 220, 0.3)',
+                display: "flex",
+                flexDirection: "column"
             }}
         >
             <Typography variant="h6" sx={{ mb: 2, color: '#2e2f2a' }}>
@@ -56,26 +114,29 @@ export default function AddExpenseCard({ onExpenseAdded }) {
             >
                 {/* Dropdown for Category */}
                 <FormControl fullWidth size="small">
-                    <InputLabel id="category-label">Kategori</InputLabel>
+                    <InputLabel id="category-label">Kategorier</InputLabel>
                     <Select
                         labelId="category-label"
-                        value={category}
+                        value={selectedCategory}
                         label="Kategori"
-                        onChange={(e) => setCategory(e.target.value)}
+                        onChange={(e) => setSelectedCategory(e.target.value)}
                     >
-                        <MenuItem value="Streaming">Streaming</MenuItem>
-                        <MenuItem value="Träning">Träning</MenuItem>
-                        <MenuItem value="Övrigt">Övrigt</MenuItem>
-                        <MenuItem value="Data">Data</MenuItem>
+                        {categories.map((cat) => (
+                            <MenuItem key={cat.id} value={cat.id}>
+                                {cat.name}
+                            </MenuItem>
+                        ))}
+
                     </Select>
                 </FormControl>
 
                 {/* Field for name/description */}
                 <TextField
                     fullWidth
+                    required
                     size="small"
-                    label="Namn på utgift"
-                    placeholder="t.ex. Netflix, Gymkort"
+                    label="Namn på utgift "
+                    placeholder="t.ex. Netflix, Viaplay"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                 />
@@ -100,6 +161,35 @@ export default function AddExpenseCard({ onExpenseAdded }) {
                         '& input[type=number]': {
                             '-moz-appearance': 'textfield',
                         },
+                    }}
+                />
+
+                {/* Interval*/}
+                <FormControl fullWidth size="small" required>
+                    <InputLabel id="interval-label">Intervall</InputLabel>
+                    <Select
+                        labelId="interval-label"
+                        value={interval}
+                        label="Intervall"
+                        onChange={(e) => setInterval(e.target.value)}
+                    >
+                        <MenuItem value={0}>Veckovis</MenuItem>
+                        <MenuItem value={1}>Månadsvis</MenuItem>
+                        <MenuItem value={2}>Årsvis</MenuItem>
+                    </Select>
+                </FormControl>
+
+                {/* Date */}
+                <TextField
+                    fullWidth
+                    required
+                    size="small"
+                    type="date"
+                    label="Nästa betalningsdatum"
+                    value={nextPaymentDate}
+                    onChange={(e) => setNextPaymentDate(e.target.value)}
+                    slotProps={{
+                        inputLabel: { shrink: true }
                     }}
                 />
 

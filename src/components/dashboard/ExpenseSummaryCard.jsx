@@ -1,19 +1,21 @@
 import { Card, Box, Typography } from '@mui/material';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered';
+import EventIcon from '@mui/icons-material/Event';
 
-export default function ExpenseSummaryCard({ summary = {} }) {
-    // Default value if backend data doesnt show
-    const monthlyTotal = summary.monthlyTotal ?? 0;
-    const yearlyTotal = summary.yearlyTotal ?? 0;
-    const totalCount = summary.totalCount ?? 0;
+export default function ExpenseSummaryCard({ summary = {}, expenses = [] }) {
+    const monthlyTotal = summary.totalMonthlyCost ?? summary.monthlyTotal ?? 0;
+    const yearlyTotal = summary.totalYearlyCost ?? summary.yearlyTotal ?? 0;
+
+    const nextExpense = expenses
+        .filter(e => e.nextPaymentDate)
+        .sort((a, b) => new Date(a.nextPaymentDate) - new Date(b.nextPaymentDate))[0];
 
     return (
         <Box
             sx={{
                 display: 'flex',
-                flexDirection: 'row',
+                flexDirection: { xs: 'column', md: 'row' },
                 gap: 2,
                 width: '100%',
                 maxWidth: '1024px',
@@ -41,6 +43,7 @@ export default function ExpenseSummaryCard({ summary = {} }) {
                         p: 1.5,
                         borderRadius: 2,
                         display: 'flex',
+
                     }}
                 >
                     <AccountBalanceWalletIcon fontSize="medium" />
@@ -90,7 +93,7 @@ export default function ExpenseSummaryCard({ summary = {} }) {
                 </Box>
             </Card>
 
-            {/* Expense summary */}
+            {/* Next payment */}
             <Card
                 elevation={0}
                 sx={{
@@ -113,14 +116,16 @@ export default function ExpenseSummaryCard({ summary = {} }) {
                         display: 'flex',
                     }}
                 >
-                    <FormatListNumberedIcon fontSize="medium" />
+                    <EventIcon fontSize="medium" />
                 </Box>
                 <Box>
                     <Typography variant="caption" color="text.secondary">
-                        Aktiva utgifter
+                        Nästa dragning {nextExpense ? `(${nextExpense.title || nextExpense.name})` : ''}
                     </Typography>
                     <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#2e2f2a' }}>
-                        {totalCount} st
+                        {nextExpense?.nextPaymentDate
+                            ? new Date(nextExpense.nextPaymentDate).toLocaleDateString('sv-SE')
+                            : 'Inga datum'}
                     </Typography>
                 </Box>
             </Card>

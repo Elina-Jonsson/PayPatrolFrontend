@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { authService } from "../services/AuthService";
+import { useAuth } from "../context/AuthContext";
 import "./Login.css";
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -8,11 +8,10 @@ import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 
-
 export default function Login() {
-
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const { login } = useAuth();
 
     const [error, setError] = useState({});
     const navigate = useNavigate();
@@ -37,13 +36,13 @@ export default function Login() {
         }
 
         try {
-            await authService.register({ email, password });
-            navigate("/till dashboarden");
+            await login({ email, password });
+            navigate("/dashboard");
         } catch (err) {
-            if (err.response && err.response.status === 409) {
-                setError({ email: "Email eller lösenord är felaktig." });
+            if (err.response && (err.response.status === 401 || err.response.status === 400 || err.response.status === 409)) {
+                setError({ general: "Felaktig e-post eller lösenord." });
             } else {
-                setError({ general: "Kunde inte logga in. Försök igen." });
+                setError({ general: "Kunde inte ansluta till servern. Försök igen." });
             }
         }
 

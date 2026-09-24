@@ -1,12 +1,14 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { authService } from './services/authService';
+import { authService } from "../services/AuthService";
 
+// Create context for sharing auth state globally
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState("");
-    const [loading, setLoading] = useState("");
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
 
+    // Verify user session on initial app load
     useEffect(() => {
         const checkAuthStatus = async () => {
             try {
@@ -22,15 +24,22 @@ export const AuthProvider = ({ children }) => {
         checkAuthStatus();
     }, []);
 
+    // Authenticate user and store user profile in state
     const login = async (credentials) => {
         await authService.login(credentials);
         const userData = await authService.getCurrentUser();
         setUser(userData);
     };
 
+    // End session and clear local user state
     const logout = async () => {
-        await authService.logout();
-        setUser(null);
+        try {
+            await authService.logout();
+        } catch (err) {
+            console.error("Logout failed on server:", err);
+        } finally {
+            setUser(null);
+        }
     };
 
     return (
@@ -40,4 +49,5 @@ export const AuthProvider = ({ children }) => {
     )
 };
 
+// Custom hook to easily consume AuthContext in any component
 export const useAuth = () => useContext(AuthContext);

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import { authService } from "../services/AuthService";
 import "./Register.css";
 import Box from '@mui/material/Box';
@@ -14,6 +15,7 @@ export default function Register() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
 
+    const { login } = useAuth();
     const [error, setError] = useState({});
     const navigate = useNavigate();
 
@@ -40,7 +42,10 @@ export default function Register() {
 
         try {
             await authService.register({ firstName, lastName, email, password });
-            navigate("/till dashboarden");
+
+            await login({ email, password });
+
+            navigate('/dashboard');
         } catch (err) {
             if (err.response && err.response.status === 409) {
                 setError({ email: "E-postadressen är redan registrerad." });
